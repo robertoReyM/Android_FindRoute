@@ -5,7 +5,7 @@ import com.google.android.gms.maps.model.LatLng;
 /**
  * Created by robertoreym on 16/03/16.
  */
-public class Intersection {
+public class PointIntersection {
 
     private String r1ID;
     private Stop r1Stop;

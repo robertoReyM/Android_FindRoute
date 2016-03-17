@@ -7,16 +7,18 @@ import java.util.ArrayList;
  */
 public class Result {
 
-    private float distance;
     private ArrayList<Trajectory> trajectories;
 
     public float getDistance() {
-        return distance;
+
+        float totalDistance = 0;
+
+        for(Trajectory trajectory: trajectories){
+            totalDistance+=trajectory.getDistance();
+        }
+        return totalDistance;
     }
 
-    public void setDistance(float distance) {
-        this.distance = distance;
-    }
 
     public ArrayList<Trajectory> getTrajectories() {
         return trajectories;
@@ -25,4 +27,5 @@ public class Result {
     public void setTrajectories(ArrayList<Trajectory> trajectories) {
         this.trajectories = trajectories;
     }
+
 }

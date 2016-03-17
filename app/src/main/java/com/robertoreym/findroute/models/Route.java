@@ -3,6 +3,7 @@ package com.robertoreym.findroute.models;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -14,6 +15,15 @@ public class Route {
     private ArrayList<Stop> stops;
     private List<LatLng> points;
     private Stop closestStop;
+    private HashMap<String,RouteIntersection> availableRoutes;
+
+    public HashMap<String, RouteIntersection> getAvailableRoutes() {
+        return availableRoutes;
+    }
+
+    public void setAvailableRoutes(HashMap<String, RouteIntersection> availableRoutes) {
+        this.availableRoutes = availableRoutes;
+    }
 
     public String getId() {
         return id;

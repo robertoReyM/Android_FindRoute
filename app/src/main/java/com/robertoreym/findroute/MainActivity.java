@@ -8,11 +8,11 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.View;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -24,9 +24,10 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.maps.android.PolyUtil;
-import com.robertoreym.findroute.models.Intersection;
+import com.robertoreym.findroute.models.PointIntersection;
 import com.robertoreym.findroute.models.Result;
 import com.robertoreym.findroute.models.Route;
+import com.robertoreym.findroute.models.RouteIntersection;
 import com.robertoreym.findroute.models.Stop;
 import com.robertoreym.findroute.models.Trajectory;
 
@@ -56,9 +57,11 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
     private LatLng mSource;
     private LatLng mDestination;
     private ArrayList<String> mPolylines;
+    private HashMap<String,Route> mRoutes;
     private HashMap<String,Route> mSourceRoutes;
     private HashMap<String,Route> mDestinationRoutes;
 
+    private FloatingActionButton mFabSearch;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -87,82 +90,125 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
             mPolylines.add(POLYLINES[i]);
         }
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        assert fab != null;
-        fab.setOnClickListener(new View.OnClickListener() {
+        mFabSearch = (FloatingActionButton) findViewById(R.id.fab);
+        assert mFabSearch != null;
+        mFabSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                findAvailableRoutes(mSource, mDestination, mPolylines, mSourceRoutes, mDestinationRoutes);
-
-                boolean isRouteFound = false;
-
-                //go through source routes
-                for (HashMap.Entry<String, Route> entry : mSourceRoutes.entrySet()) {
-
-                    //check for a common route
-                    if(mDestinationRoutes.containsKey(entry.getKey())){
-
-                        Route sourceRoute = entry.getValue();
-                        Route destinationRoute = mDestinationRoutes.get(entry.getKey());
-                        Trajectory trajectory = getTrajectory(entry.getValue().getPolyline(),
-                                sourceRoute.getClosestStop().getPosition(),destinationRoute.getClosestStop().getPosition());
-                        paintPolyline(trajectory.getPoints());
-
-                        isRouteFound = true;
-                    }
-                }
-
-                if(!isRouteFound){
-
-                    ArrayList<Intersection> intersections = new ArrayList<Intersection>();
-
-                    //go through source routes
-                    for (HashMap.Entry<String, Route> sourceEntry : mSourceRoutes.entrySet()) {
-
-                        for(HashMap.Entry<String, Route> destinationEntry : mDestinationRoutes.entrySet()){
-
-                            ArrayList<Intersection> results = checkRoutesIntersection(sourceEntry.getValue(),destinationEntry.getValue());
-                            intersections.addAll(results);
-                        }
-
-
-                    }
-
-                    ArrayList<Result> results = new ArrayList<Result>();
-
-                    //iterate intersections
-                    for(Intersection intersection : intersections){
-
-                        Route sourceRoute = mSourceRoutes.get(intersection.getR1ID());
-                        Route destinationRoute = mDestinationRoutes.get(intersection.getR2ID());
-
-                        Trajectory sourceTrajectory = getTrajectory(sourceRoute.getPolyline(),
-                                sourceRoute.getClosestStop().getPosition(), intersection.getR1Stop().getPosition());
-
-                        Trajectory destinationTrajectory = getTrajectory(destinationRoute.getPolyline(),
-                                destinationRoute.getClosestStop().getPosition(),intersection.getR2Stop().getPosition());
-
-                        //add trajectories to result
-                        Result result = new Result();
-                        result.setDistance(sourceTrajectory.getDistance()+destinationTrajectory.getDistance());
-                        result.setTrajectories(new ArrayList<Trajectory>());
-                        result.getTrajectories().add(sourceTrajectory);
-                        result.getTrajectories().add(destinationTrajectory);
-
-                        results.add(result);
-                    }
-
-                    //get best result possible
-                    Result winnerResult = getWinnerResult(results);
-
-                    //paint winner result
-                    paintResult(winnerResult);
-
-                }
+                searchRoutes();
             }
         });
+
+
+
     }
+
+    public void onResume(){
+        super.onResume();
+
+        //Preprocessing all routes
+        mRoutes = preProcessingRoutes(mPolylines);
+
+    }
+    private void searchRoutes(){
+
+        //get available routes for source and destination points
+        findAvailableRoutes(mSource, mDestination, mPolylines, mSourceRoutes, mDestinationRoutes);
+
+        //check for common routes
+        ArrayList<Result> results = checkFirstLevel(mSourceRoutes,mDestinationRoutes);
+
+        if(results.size() == 0){
+
+            //check for intersections between source an destination routes
+            results = checkSecondLevel(mSourceRoutes,mDestinationRoutes);
+
+            if(results.size() == 0) {
+
+            }
+
+        }
+
+        if(results.size()>0){
+
+            //get best result possible
+            Result winnerResult = getWinnerResult(results);
+
+            //paint winner result
+            paintResult(winnerResult);
+
+            Snackbar.make(mFabSearch,String.format("Distancia de la ruta: %f",winnerResult.getDistance()),Snackbar.LENGTH_SHORT).show();
+        }
+    }
+
+    private ArrayList<Result> checkFirstLevel(HashMap<String,Route> sourceRoutes,HashMap<String,Route> destinationRoutes){
+
+        ArrayList<Result> results = new ArrayList<>();
+        //go through source routes
+        for (HashMap.Entry<String, Route> entry : sourceRoutes.entrySet()) {
+
+            //check for a common route
+            if(destinationRoutes.containsKey(entry.getKey())){
+
+                Route sourceRoute = entry.getValue();
+                Route destinationRoute = destinationRoutes.get(entry.getKey());
+                Trajectory trajectory = getTrajectory(entry.getValue().getPolyline(),
+                        sourceRoute.getClosestStop().getPosition(), destinationRoute.getClosestStop().getPosition());
+
+                //create result
+                Result result = new Result();
+                result.setTrajectories(new ArrayList<Trajectory>());
+                result.getTrajectories().add(trajectory);
+                paintResult(result);
+
+                results.add(result);
+            }
+        }
+
+        return results;
+
+    }
+    private ArrayList<Result> checkSecondLevel(HashMap<String,Route> sourceRoutes,HashMap<String,Route> destinationRoutes){
+
+        ArrayList<Result> results = new ArrayList<>();
+
+        ArrayList<PointIntersection> pointIntersections = new ArrayList<PointIntersection>();
+
+        //go through source routes
+        for (HashMap.Entry<String, Route> sourceEntry : sourceRoutes.entrySet()) {
+
+            for(HashMap.Entry<String, Route> destinationEntry : destinationRoutes.entrySet()){
+
+                ArrayList<PointIntersection> routePointIntersections = checkRoutesIntersection(sourceEntry.getValue(),destinationEntry.getValue());
+                pointIntersections.addAll(routePointIntersections);
+            }
+        }
+
+        //iterate intersections
+        for(PointIntersection pointIntersection : pointIntersections){
+
+            Route sourceRoute = sourceRoutes.get(pointIntersection.getR1ID());
+            Route destinationRoute = destinationRoutes.get(pointIntersection.getR2ID());
+
+            Trajectory sourceTrajectory = getTrajectory(sourceRoute.getPolyline(),
+                    sourceRoute.getClosestStop().getPosition(), pointIntersection.getR1Stop().getPosition());
+
+            Trajectory destinationTrajectory = getTrajectory(destinationRoute.getPolyline(),
+                    destinationRoute.getClosestStop().getPosition(), pointIntersection.getR2Stop().getPosition());
+
+            //add trajectories to result
+            Result result = new Result();
+            result.setTrajectories(new ArrayList<Trajectory>());
+            result.getTrajectories().add(sourceTrajectory);
+            result.getTrajectories().add(destinationTrajectory);
+
+            results.add(result);
+        }
+
+        return results;
+    }
+
 
     /***********************************************************************************************
      Google maps
@@ -368,13 +414,13 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                         //check if is closer than previous
                         if(resultsToSource[0]<closestSourceDistance){
 
-                            //assing new closest point
+                            //assign new closest point
                             closestSourcePoint = point;
                             closestSourceDistance = resultsToSource[0];
                         }
                     }else{
 
-                        //assing new closest point
+                        //assign new closest point
                         closestSourcePoint = point;
                         closestSourceDistance = resultsToSource[0];
                     }
@@ -439,9 +485,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         }
     }
 
-    private ArrayList<Intersection> checkRoutesIntersection(Route r1, Route r2){
+    private ArrayList<PointIntersection> checkRoutesIntersection(Route r1, Route r2){
 
-        ArrayList<Intersection> intersections = new ArrayList<>();
+        ArrayList<PointIntersection> pointIntersections = new ArrayList<>();
 
 
         for(LatLng pointR1 :r1.getPoints()){
@@ -473,18 +519,18 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                     if(distance[0] < DEFAULT_INTERSECTION_TOLERANCE) {
 
 
-                        Intersection intersection = new Intersection();
-                        intersection.setR1ID(r1.getId());
-                        intersection.setR2ID(r2.getId());
+                        PointIntersection pointIntersection = new PointIntersection();
+                        pointIntersection.setR1ID(r1.getId());
+                        pointIntersection.setR2ID(r2.getId());
                         Stop stopR1 = new Stop();
                         stopR1.setName("Stop R1");
                         stopR1.setPosition(pointR1);
-                        intersection.setR1Stop(stopR1);
+                        pointIntersection.setR1Stop(stopR1);
                         Stop stopR2 = new Stop();
                         stopR2.setName("Stop R2");
                         stopR2.setPosition(pointR2);
-                        intersection.setR2Stop(stopR2);
-                        intersections.add(intersection);
+                        pointIntersection.setR2Stop(stopR2);
+                        pointIntersections.add(pointIntersection);
 
                     }
                 }
@@ -492,7 +538,101 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
         }
 
-        return intersections;
+        return pointIntersections;
 
+    }
+
+
+    private HashMap<String,Route> preProcessingRoutes(ArrayList<String> polylines){
+
+        HashMap<String,Route> routes = new HashMap<>();
+
+        //iterate through polylines
+        for(int i1 = 0; i1< polylines.size();i1++) {
+
+            Route route = new Route();
+            route.setId(String.valueOf(i1));
+            route.setAvailableRoutes(new HashMap<String, RouteIntersection>());
+            routes.put(route.getId(),route);
+
+            //get list of points
+            route.setPoints(PolyUtil.decode(polylines.get(i1)));
+
+            //iterate through points inside route
+            for(int i2 = 0; i2<route.getPoints().size();i2++){
+
+                //get current point
+                LatLng point1 = route.getPoints().get(i1);
+
+                //go through all other polylines get possible intersections
+                for(int i3 = 0; i3<polylines.size();i3++){
+
+                    //Create new route intersection
+                    RouteIntersection routeIntersection = new RouteIntersection();
+                    routeIntersection.setRouteID(String.valueOf(i3));
+                    routeIntersection.setPointIntersections(new ArrayList<PointIntersection>());
+
+                    //as long is not the same route
+                    if(i3 != i1) {
+
+                        //get list of points of route to compare with
+                        List<LatLng> points2 = PolyUtil.decode(polylines.get(i3));
+
+                        //iterate through points on route to compare
+                        for(int i4 = 0; i4<points2.size();i4++) {
+
+                            float distance[] = new float[2];
+
+                            //get current point
+                            LatLng point2 = points2.get(i4);
+
+                            //get distance to source
+                            Location.distanceBetween(
+                                    point1.latitude,
+                                    point1.longitude,
+                                    point2.latitude,
+                                    point2.longitude,
+                                    distance);
+
+                            //check if is close enough
+                            if (distance[0] < DEFAULT_INTERSECTION_TOLERANCE) {
+
+                                PointIntersection pointIntersection = new PointIntersection();
+
+                                //Assign r1 information
+                                Stop stop = new Stop();
+                                stop.setName(String.format("Stop R%d P%d", i1, i2));
+                                stop.setPosition(point1);
+                                pointIntersection.setR1Stop(stop);
+                                pointIntersection.setR1ID(String.format("%d", i1));
+
+                                //Assign r2 information
+                                stop = new Stop();
+                                stop.setName(String.format("Stop R%d P%d", i3,i2));
+                                stop.setPosition(point2);
+                                pointIntersection.setR2Stop(stop);
+                                pointIntersection.setR2ID(String.format("%d", i3));
+
+                                //add to route intersection
+                                routeIntersection.getPointIntersections().add(pointIntersection);
+
+                            }
+                        }
+
+                        //check for a valid route intersection object
+                        if(routeIntersection.getPointIntersections().size()>0){
+
+                            //Add route intersection to route
+                            route.getAvailableRoutes().put(routeIntersection.getRouteID(),routeIntersection);
+                        }
+
+                    }
+
+                }
+            }
+
+        }
+
+        return routes;
     }
 }
