@@ -48,7 +48,8 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
     private String[] POLYLINES = {
             "qkf}BdgivRrA{IzDo\\bAuJnBmPlBkNjBoOjDiLbD{H|E`BnGnB`Cp@tN|D|TfHpMhEhL`DhN~EvJxCpGvB`KvBfI`ChJ`DvFtA",
             "mca}BbyfvRcWtAiS~@eQ~@aKv@uK`@sF_AiGuCgH{B}MmAyScC_UmCyPaBsJiAiDYoDw@gDcC_BoD}AwM{AsB{DGqK?}IFgJvB}GXcKmAyHsBuJ_EwHmCaG}CoCwDwBwE_DiG",
-            "u~f}B`ifvRxIv@`IfAbCTbHp@xIpAlHdAfGV|Fb@jGl@`GbD~GpC`JCrFY"
+            "u~f}B`ifvRxIv@`IfAbCTbHp@xIpAlHdAfGV|Fb@jGl@`GbD~GpC`JCrFY",
+            "ube}BbufvRiNgBiK}AiNuA_MgBiLkAqGs@_B}HoAoJ_DiNw@kLy@_JXkOn@}LqDaKwEgMo@kLgCsOqEsG"
     };
 
     private GoogleMap mMap;
@@ -74,7 +75,8 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         mSource = new LatLng(20.681568,-103.433966);
         //mDestination = new LatLng(20.680323,-103.427153);
         //mDestination = new LatLng(20.690124,-103.416188);
-        mDestination = new LatLng(20.672739,-103.422797);
+        //mDestination = new LatLng(20.672739,-103.422797);
+        mDestination = new LatLng(20.690365,-103.403958);
 
         mPolylines = new ArrayList<>();
         mSourceRoutes = new HashMap<>();
@@ -141,6 +143,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                         Trajectory destinationTrajectory = getTrajectory(destinationRoute.getPolyline(),
                                 destinationRoute.getClosestStop().getPosition(),intersection.getR2Stop().getPosition());
 
+                        //add trajectories to result
                         Result result = new Result();
                         result.setDistance(sourceTrajectory.getDistance()+destinationTrajectory.getDistance());
                         result.setTrajectories(new ArrayList<Trajectory>());
@@ -150,23 +153,11 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                         results.add(result);
                     }
 
-                    Result winnerResult = null;
-                    float smallerDistance = 0.0f;
-                    //get better result
-                    for(Result result: results){
+                    //get best result possible
+                    Result winnerResult = getWinnerResult(results);
 
-                        if(smallerDistance == 0){
-                            smallerDistance = result.getDistance();
-                            winnerResult = result;
-                        }else if(result.getDistance()<smallerDistance){
-                            smallerDistance = result.getDistance();
-                            winnerResult = result;
-                        }
-                    }
-
-                    for(Trajectory trajectory :winnerResult.getTrajectories()){
-                        paintPolyline(trajectory.getPoints());
-                    }
+                    //paint winner result
+                    paintResult(winnerResult);
 
                 }
             }
@@ -302,6 +293,35 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                 .geodesic(true)
                 .addAll(points));
 
+    }
+
+    private void paintResult(Result result){
+
+        if(result!=null && result.getTrajectories()!=null) {
+            for (Trajectory trajectory : result.getTrajectories()) {
+                paintPolyline(trajectory.getPoints());
+            }
+        }
+    }
+
+    private Result getWinnerResult(ArrayList<Result>results){
+
+        Result winnerResult = null;
+        float smallerDistance = 0.0f;
+
+        //get better result
+        for(Result result: results){
+
+            if(smallerDistance == 0){
+                smallerDistance = result.getDistance();
+                winnerResult = result;
+            }else if(result.getDistance()<smallerDistance){
+                smallerDistance = result.getDistance();
+                winnerResult = result;
+            }
+        }
+
+        return winnerResult;
     }
     private void findAvailableRoutes(LatLng source,LatLng destination,ArrayList<String> polylines,
                                      HashMap<String,Route> sourceRoutes,HashMap<String,Route> destinationRoutes){
