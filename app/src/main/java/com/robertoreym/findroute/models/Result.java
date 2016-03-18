@@ -7,7 +7,16 @@ import java.util.ArrayList;
  */
 public class Result {
 
+    private String routes;
     private ArrayList<Trajectory> trajectories;
+
+    public String getRoutes() {
+        return routes;
+    }
+
+    public void setRoutes(String routes) {
+        this.routes = routes;
+    }
 
     public float getDistance() {
 

@@ -53,8 +53,8 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
             "qkf}BdgivRrA{IzDo\\bAuJnBmPlBkNjBoOjDiLbD{H|E`BnGnB`Cp@tN|D|TfHpMhEhL`DhN~EvJxCpGvB`KvBfI`ChJ`DvFtA",
             "mca}BbyfvRcWtAiS~@eQ~@aKv@uK`@sF_AiGuCgH{B}MmAyScC_UmCyPaBsJiAiDYoDw@gDcC_BoD}AwM{AsB{DGqK?}IFgJvB}GXcKmAyHsBuJ_EwHmCaG}CoCwDwBwE_DiG",
             "u~f}B`ifvRxIv@`IfAbCTbHp@xIpAlHdAfGV|Fb@jGl@`GbD~GpC`JCrFY",
-            "ube}BbufvRiNgBiK}AiNuA_MgBiLkAqGs@_B}HoAoJ_DiNw@kLy@_JXkOn@}LqDaKwEgMo@kLgCsOqEsG",
-            "oog}BlzfvReBkWkHmb@eCs^^_YaI{SqCm^gJgJ_D}H_BsKiGiGaLcH_L{KyEiKgC{GyE{H_EyJwBaKqGFgIpCqHnF_F~EgEhDqDpBo@fGgC~IwD|LqCpFgI|AfKmIhDkIjByEbAkDj@eEvA{DpDaCrA_AbEkDrDoDhCwBvGgCtG_BbFa@jFgA`GcBzFoAdFeArFmBhDoB",
+            "ube}BbufvRiNgBiK}AiNuA_MgBiLkAqGs@_B}HoAoJ_DiNw@kLy@_JXkOn@}LqDaKwEgMo@kLgCsOqEsG_GuIaCcOoHqGiKaGaLcLwDeIwEiJaDaH_A{C_DcH_B_JyEr@wIjD",
+            "oog}BlzfvReBkWkHmb@eCs^^_YaI{SqCm^gJgJ_D}H_BsKiGiGaLcH_L{KyEiKgC{GyE{H_EyJwBaKqGFgIpCqHnF_F~EgEhDqDpBo@fGgC~IwD|LqCpFgI|AfKmIhDkIjByEbAkDj@eEvA{DpDaCrA_AbEkDrDoDhCwBvGgCtG_BhCMdI{A`GcBzFoAdFeArFmBhDoB",
             "cfm}Bl``vR~H_BhByGvAiGfCaG~@gFv@oFhDaDnFsCvCaDxHgF~FiChFcA~IcA`I{C~FcAxEmAfIyC`F_C~DmAxJa@~JPhLFxMP",
             "kud}BnwfvRqSeBqKwBaPuAqQwBiP}AaM{CyEcPgCiGqLQaPQ_L|DyNmAyOmEyNcHyIuEoHyNqDwMoFyCoDuDOcEnBqCf@sGn@mMoCqJ_BeM^aG~GeInDuHVeF_@{K_DmWgA_JoAwI_@aHo@gFW_Fo@_J"
     };
@@ -129,7 +129,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         searchSourceAndDestinationPoints(mSource,mDestination);
 
         //check for common routes
-        ArrayList<Result> results = checkFirstLevel(mSourcePoint,mDestinationPoint);
+        HashMap<String,Result> results = checkFirstLevel(mSourcePoint,mDestinationPoint);
 
         if(results.size() == 0){
 
@@ -147,7 +147,10 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
         if(results.size()>0 && mCounter<results.size()){
 
-            Collections.sort(results, new Comparator<Result>() {
+
+            List<Result> sortedResults = new ArrayList<Result>(results.values());
+
+            Collections.sort(sortedResults, new Comparator<Result>() {
                 @Override
                 public int compare(Result lhs, Result rhs) {
                     return (int) (lhs.getDistance() - rhs.getDistance());
@@ -158,9 +161,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
             mMap.addMarker(new MarkerOptions().position(mSource));
             mMap.addMarker(new MarkerOptions().position(mDestination));
             //paint winner result
-            paintResult(results.get(mCounter));
+            paintResult(sortedResults.get(mCounter));
 
-            Snackbar.make(mFabSearch,String.format("Distancia de la ruta: %f",results.get(mCounter).getDistance()),Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(mFabSearch,String.format("Distancia de la ruta: %f",sortedResults.get(mCounter).getDistance()),Snackbar.LENGTH_SHORT).show();
             mCounter++;
         }
     }
@@ -231,7 +234,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
                                 //Assign r2 information
                                 stop = new Stop();
-                                stop.setName(String.format("Stop R%d P%d", i3,i2));
+                                stop.setName(String.format("Stop R%d P%d", i3, i4));
                                 stop.setPosition(point2);
                                 pointIntersection.setR2Stop(stop);
                                 pointIntersection.setR2ID(String.format("%d", i3));
@@ -240,13 +243,23 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                                 routeIntersection.getPointIntersections().add(pointIntersection);
 
                             }
+
                         }
 
                         //check for a valid route intersection object
                         if(routeIntersection.getPointIntersections().size()>0){
 
-                            //Add route intersection to route
-                            route.getIntersectedRoutes().put(routeIntersection.getRouteID(),routeIntersection);
+                            if(route.getIntersectedRoutes().containsKey(routeIntersection.getRouteID())) {
+
+                                //add point intersections to current route intersection
+                                route.getIntersectedRoutes().get(routeIntersection.getRouteID())
+                                        .getPointIntersections().addAll(routeIntersection.getPointIntersections());
+
+                            }else{
+
+                                //Add route intersection to route
+                                route.getIntersectedRoutes().put(routeIntersection.getRouteID(), routeIntersection);
+                            }
                         }
 
                     }
@@ -375,9 +388,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
     }
 
-    private ArrayList<Result> checkFirstLevel(SearchPoint sourcePoint,SearchPoint destinationPoint){
+    private HashMap<String,Result> checkFirstLevel(SearchPoint sourcePoint,SearchPoint destinationPoint){
 
-        ArrayList<Result> results = new ArrayList<>();
+        HashMap<String,Result> results = new HashMap<>();
 
         //go through source routes
         for (HashMap.Entry<String, Route> entry : sourcePoint.getAvailableRoutes().entrySet()) {
@@ -396,11 +409,26 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
                     //create result
                     Result result = new Result();
+                    result.setRoutes(route.getId());
                     result.setTrajectories(new ArrayList<Trajectory>());
                     result.getTrajectories().add(trajectory);
                     paintResult(result);
 
-                    results.add(result);
+                    //Check for the same result
+                    if(results.containsKey(result.getRoutes())){
+
+                        //compare distances
+                        if(results.get(result.getRoutes()).getDistance()>result.getDistance()){
+
+                            //replace result
+                            results.put(result.getRoutes(),result);
+                        }
+
+                    }else{
+
+                        //add result
+                        results.put(result.getRoutes(), result);
+                    }
                 }
             }
         }
@@ -409,9 +437,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
     }
 
-    private ArrayList<Result> checkSecondLevel(SearchPoint sourcePoint,SearchPoint destinationPoint){
+    private HashMap<String,Result> checkSecondLevel(SearchPoint sourcePoint,SearchPoint destinationPoint){
 
-        ArrayList<Result> results = new ArrayList<>();
+        HashMap<String,Result> results = new HashMap<>();
 
 
         //go through source routes
@@ -442,11 +470,26 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                         if(trajectory1!=null && trajectory2!=null) {
                             //add trajectories to result
                             Result result = new Result();
+                            result.setRoutes(String.format("%s%s",sourceRoute.getId(),destinationRoute.getId()));
                             result.setTrajectories(new ArrayList<Trajectory>());
                             result.getTrajectories().add(trajectory1);
                             result.getTrajectories().add(trajectory2);
 
-                            results.add(result);
+                            //Check for the same result
+                            if(results.containsKey(result.getRoutes())){
+
+                                //compare distances
+                                if(results.get(result.getRoutes()).getDistance()>result.getDistance()){
+
+                                    //replace result
+                                    results.put(result.getRoutes(),result);
+                                }
+
+                            }else{
+
+                                //add result
+                                results.put(result.getRoutes(), result);
+                            }
                         }
                     }
                 }
@@ -458,9 +501,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         return results;
     }
 
-    private ArrayList<Result> checkThirdLevel(SearchPoint sourcePoint,SearchPoint destinationPoint){
+    private HashMap<String,Result> checkThirdLevel(SearchPoint sourcePoint,SearchPoint destinationPoint){
 
-        ArrayList<Result> results = new ArrayList<>();
+        HashMap<String,Result> results = new HashMap<>();
 
         //go through source routes
         for (HashMap.Entry<String, Route> sourceEntry : sourcePoint.getAvailableRoutes().entrySet()) {
@@ -507,12 +550,29 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                                 if(trajectory1!=null && trajectory2!=null && trajectory3!=null) {
                                     //add trajectories to result
                                     Result result = new Result();
+                                    result.setRoutes(String.format("%s,%s,%s",
+                                            sourceRoute.getId(),currentIntersectedRoute.getId(),destinationRoute.getId()));
+
                                     result.setTrajectories(new ArrayList<Trajectory>());
                                     result.getTrajectories().add(trajectory1);
                                     result.getTrajectories().add(trajectory2);
                                     result.getTrajectories().add(trajectory3);
 
-                                    results.add(result);
+                                    //Check for the same result
+                                    if(results.containsKey(result.getRoutes())){
+
+                                        //compare distances
+                                        if(results.get(result.getRoutes()).getDistance()>result.getDistance()){
+
+                                            //replace result with shorter distance
+                                            results.put(result.getRoutes(),result);
+                                        }
+
+                                    }else{
+
+                                        //add result
+                                        results.put(result.getRoutes(), result);
+                                    }
                                 }
 
                             }
@@ -521,6 +581,8 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                 }
             }
         }
+
+        //remove results alike
 
         return results;
     }
@@ -596,6 +658,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
     private Trajectory getTrajectory(String encodedPolyline,LatLng p1,LatLng p2){
 
         List<LatLng> points = PolyUtil.decode(encodedPolyline);
+        ArrayList<LatLng> trajectoryPoints = new ArrayList<>();
         boolean isP1Found = false;
         boolean isP2Found = false;
 
@@ -635,10 +698,21 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                             totalDistance+=distance[0];
                         }
 
-                    }else{
+                        float distance[] = new float[2];
+                        //get distance to source
+                        Location.distanceBetween( p1.latitude, p1.longitude,  point.latitude, point.longitude, distance);
 
-                        iterator.remove();
+                        //check if is close enough
+                        if (distance[0] < DEFAULT_INTERSECTION_TOLERANCE) {
+
+                            totalDistance = 0.0f;
+                            previousPoint = null;
+                            trajectoryPoints.clear();
+                        }
+                        trajectoryPoints.add(point);
+
                     }
+
                 }else{
 
                     if(previousPoint == null){
@@ -651,20 +725,29 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                         previousPoint = point;
                         totalDistance+=distance[0];
                     }
+
+                    float distance[] = new float[2];
+                    //get distance to source
+                    Location.distanceBetween( p1.latitude, p1.longitude,  point.latitude, point.longitude, distance);
+
+                    //check if is close enough
+                    if (distance[0] < DEFAULT_INTERSECTION_TOLERANCE) {
+                        totalDistance = 0.0f;
+                        previousPoint = null;
+                        trajectoryPoints.clear();
+                    }
+                    trajectoryPoints.add(point);
                 }
 
             }else if(isP2Found){
 
                 return null;
 
-            }else {
-
-                iterator.remove();
             }
         }
 
         Trajectory trajectory =  new Trajectory();
-        trajectory.setPoints(points);
+        trajectory.setPoints(trajectoryPoints);
         trajectory.setDistance(totalDistance);
 
         return trajectory;
