@@ -33,6 +33,8 @@ import com.robertoreym.findroute.models.Stop;
 import com.robertoreym.findroute.models.Trajectory;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -52,7 +54,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
             "mca}BbyfvRcWtAiS~@eQ~@aKv@uK`@sF_AiGuCgH{B}MmAyScC_UmCyPaBsJiAiDYoDw@gDcC_BoD}AwM{AsB{DGqK?}IFgJvB}GXcKmAyHsBuJ_EwHmCaG}CoCwDwBwE_DiG",
             "u~f}B`ifvRxIv@`IfAbCTbHp@xIpAlHdAfGV|Fb@jGl@`GbD~GpC`JCrFY",
             "ube}BbufvRiNgBiK}AiNuA_MgBiLkAqGs@_B}HoAoJ_DiNw@kLy@_JXkOn@}LqDaKwEgMo@kLgCsOqEsG",
-            "a`h}BtvcvRx@sKyCgJwEyJo@mI_@aOqD_JgFaG_D}H_BsKiGiGaLcH_L{KyEiKgC{GyE{H_EyJwBaKqGFgIpCqHnF_F~EgEhDqDpBo@fGgC~IwD|LqCpFgI|AiMsD"
+            "oog}BlzfvReBkWkHmb@eCs^^_YaI{SqCm^gJgJ_D}H_BsKiGiGaLcH_L{KyEiKgC{GyE{H_EyJwBaKqGFgIpCqHnF_F~EgEhDqDpBo@fGgC~IwD|LqCpFgI|AfKmIhDkIjByEbAkDj@eEvA{DpDaCrA_AbEkDrDoDhCwBvGgCtG_BbFa@jFgA`GcBzFoAdFeArFmBhDoB",
+            "cfm}Bl``vR~H_BhByGvAiGfCaG~@gFv@oFhDaDnFsCvCaDxHgF~FiChFcA~IcA`I{C~FcAxEmAfIyC`F_C~DmAxJa@~JPhLFxMP",
+            "kud}BnwfvRqSeBqKwBaPuAqQwBiP}AaM{CyEcPgCiGqLQaPQ_L|DyNmAyOmEyNcHyIuEoHyNqDwMoFyCoDuDOcEnBqCf@sGn@mMoCqJ_BeM^aG~GeInDuHVeF_@{K_DmWgA_JoAwI_@aHo@gFW_Fo@_J"
     };
 
     private GoogleMap mMap;
@@ -66,6 +70,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
     private HashMap<String,Route> mRoutes;
     private HashMap<String,Route> mSourceRoutes;
     private HashMap<String,Route> mDestinationRoutes;
+    private int mCounter = 0;
 
     private FloatingActionButton mFabSearch;
     @Override
@@ -86,7 +91,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         //mDestination = new LatLng(20.690124,-103.416188);
         //mDestination = new LatLng(20.672739,-103.422797);
         //mDestination = new LatLng(20.690365,-103.403958);
-        mDestination = new LatLng(20.707888,-103.377678);
+        mDestination = new LatLng(20.700919,-103.375442);
 
         mPolylines = new ArrayList<>();
         mSourceRoutes = new HashMap<>();
@@ -140,15 +145,23 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
         }
 
-        if(results.size()>0){
+        if(results.size()>0 && mCounter<results.size()){
 
-            //get best result possible
-            Result winnerResult = getWinnerResult(results);
+            Collections.sort(results, new Comparator<Result>() {
+                @Override
+                public int compare(Result lhs, Result rhs) {
+                    return (int) (lhs.getDistance() - rhs.getDistance());
+                }
+            });
 
+            mMap.clear();
+            mMap.addMarker(new MarkerOptions().position(mSource));
+            mMap.addMarker(new MarkerOptions().position(mDestination));
             //paint winner result
-            paintResult(winnerResult);
+            paintResult(results.get(mCounter));
 
-            Snackbar.make(mFabSearch,String.format("Distancia de la ruta: %f",winnerResult.getDistance()),Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(mFabSearch,String.format("Distancia de la ruta: %f",results.get(mCounter).getDistance()),Snackbar.LENGTH_SHORT).show();
+            mCounter++;
         }
     }
 
@@ -449,9 +462,6 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
         ArrayList<Result> results = new ArrayList<>();
 
-        ArrayList<PointIntersection> pointIntersections1 = new ArrayList<PointIntersection>();
-        ArrayList<PointIntersection> pointIntersections2 = new ArrayList<PointIntersection>();
-
         //go through source routes
         for (HashMap.Entry<String, Route> sourceEntry : sourcePoint.getAvailableRoutes().entrySet()) {
 
@@ -474,19 +484,21 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
                             for(PointIntersection pointIntersection2 : currentRouteIntersection.getPointIntersections()){
 
-
+                                //get source and destination routes to be used
                                 Route sourceRoute = sourcePoint.getAvailableRoutes().get(sourceEntry.getKey());
                                 Route destinationRoute = destinationPoint.getAvailableRoutes().get(pointIntersection2.getR2ID());
 
-
+                                //get trajectory from source to first intersection
                                 Trajectory trajectory1 = getTrajectory(sourceRoute.getPolyline(),
                                         sourcePoint.getClosestStops().get(sourceRoute.getId()).getPosition(),
                                         pointIntersection1.getR1Stop().getPosition());
 
+                                //get trajectory from intersection one to intersection 2
                                 Trajectory trajectory2 = getTrajectory(currentIntersectedRoute.getPolyline(),
                                         pointIntersection1.getR2Stop().getPosition(),
                                         pointIntersection2.getR1Stop().getPosition());
 
+                                //get trajectory from intersection 2 to destination
                                 Trajectory trajectory3 = getTrajectory(destinationRoute.getPolyline(),
                                         pointIntersection2.getR2Stop().getPosition(),
                                         destinationPoint.getClosestStops().get(destinationRoute.getId()).getPosition());
@@ -505,15 +517,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
                             }
                         }
-
-
-
-
                     }
-
                 }
             }
-
         }
 
         return results;
@@ -587,11 +593,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         }
     }
 
-
     private Trajectory getTrajectory(String encodedPolyline,LatLng p1,LatLng p2){
 
         List<LatLng> points = PolyUtil.decode(encodedPolyline);
-        boolean isPointOnPath = false;
         boolean isP1Found = false;
         boolean isP2Found = false;
 
@@ -684,26 +688,6 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                 .geodesic(true)
                 .addAll(points));
 
-    }
-
-    private Result getWinnerResult(ArrayList<Result>results){
-
-        Result winnerResult = null;
-        float smallerDistance = 0.0f;
-
-        //get better result
-        for(Result result: results){
-
-            if(smallerDistance == 0){
-                smallerDistance = result.getDistance();
-                winnerResult = result;
-            }else if(result.getDistance()<smallerDistance){
-                smallerDistance = result.getDistance();
-                winnerResult = result;
-            }
-        }
-
-        return winnerResult;
     }
 
 
