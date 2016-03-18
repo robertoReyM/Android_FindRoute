@@ -15,14 +15,14 @@ public class Route {
     private ArrayList<Stop> stops;
     private List<LatLng> points;
     private Stop closestStop;
-    private HashMap<String,RouteIntersection> availableRoutes;
+    private HashMap<String,RouteIntersection> intersectedRoutes;
 
-    public HashMap<String, RouteIntersection> getAvailableRoutes() {
-        return availableRoutes;
+    public HashMap<String, RouteIntersection> getIntersectedRoutes() {
+        return intersectedRoutes;
     }
 
-    public void setAvailableRoutes(HashMap<String, RouteIntersection> availableRoutes) {
-        this.availableRoutes = availableRoutes;
+    public void setIntersectedRoutes(HashMap<String, RouteIntersection> intersectedRoutes) {
+        this.intersectedRoutes = intersectedRoutes;
     }
 
     public String getId() {
