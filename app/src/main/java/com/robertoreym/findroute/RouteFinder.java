@@ -95,6 +95,45 @@ public class RouteFinder {
         return null;
     }
 
+    public void generateInstructions(Result result){
+
+        if(result!=null){
+
+            result.setInstructions(new ArrayList<Instruction>());
+
+            Instruction origin = new Instruction();
+            origin.setAction("Origen");
+            result.getInstructions().add(origin);
+
+            Instruction start = new Instruction();
+            start.setAction("Camina");
+            start.setDetails(result.getTrajectories().get(0).getSource().getName());
+            result.getInstructions().add(start);
+
+            for(Trajectory trajectory:result.getTrajectories()){
+
+                Instruction instruction1 = new Instruction();
+                instruction1.setAction("Sube a " + trajectory.getName());
+                instruction1.setDetails(trajectory.getSource().getName());
+                result.getInstructions().add(instruction1);
+
+                Instruction instruction2 = new Instruction();
+                instruction2.setAction("Baja de " + trajectory.getName());
+                instruction2.setDetails(trajectory.getDestination().getName());
+                result.getInstructions().add(instruction2);
+            }
+
+
+            Instruction finish = new Instruction();
+            finish.setAction("Camina hacia tu destino");
+            result.getInstructions().add(finish);
+
+            Instruction destination = new Instruction();
+            destination.setAction("Destino");
+            result.getInstructions().add(destination);
+
+        }
+    }
     private HashMap<String,Route> preProcessingRoutes(ArrayList<Route> routesArray){
 
         HashMap<String,Route> routes = new HashMap<>();
@@ -104,6 +143,7 @@ public class RouteFinder {
 
             Route route = new Route();
             route.setId(String.valueOf(i1));
+            route.setName(routesArray.get(i1).getName());
             route.setPolyline(routesArray.get(i1).getPolyline());
             route.setIntersectedRoutes(new HashMap<String, RouteIntersection>());
             routes.put(route.getId(), route);
@@ -328,9 +368,9 @@ public class RouteFinder {
 
     }
 
-    private Trajectory getTrajectory(String encodedPolyline,LatLng p1,LatLng p2){
+    private Trajectory getTrajectory(Route route,Stop s1,Stop s2){
 
-        List<LatLng> points = PolyUtil.decode(encodedPolyline);
+        List<LatLng> points = PolyUtil.decode(route.getPolyline());
         ArrayList<LatLng> trajectoryPoints = new ArrayList<>();
         boolean isP1Found = false;
         boolean isP2Found = false;
@@ -342,12 +382,12 @@ public class RouteFinder {
 
             LatLng point = iterator.next();
 
-            if((point.latitude == p1.latitude && point.longitude == p1.longitude)){
+            if((point.latitude == s1.getPosition().latitude && point.longitude == s1.getPosition().longitude)){
 
                 isP1Found = true;
             }
 
-            if((point.latitude == p2.latitude && point.longitude == p2.longitude)){
+            if((point.latitude == s2.getPosition().latitude && point.longitude == s2.getPosition().longitude)){
 
                 isP2Found = true;
             }
@@ -358,7 +398,7 @@ public class RouteFinder {
                 if(isP2Found){
 
                     //check if its destination point
-                    if((point.latitude == p2.latitude && point.longitude == p2.longitude)){
+                    if((point.latitude == s2.getPosition().latitude && point.longitude == s2.getPosition().longitude)){
 
                         if(previousPoint == null){
 
@@ -373,7 +413,7 @@ public class RouteFinder {
 
                         float distance[] = new float[2];
                         //get distance to source
-                        Location.distanceBetween( p1.latitude, p1.longitude,  point.latitude, point.longitude, distance);
+                        Location.distanceBetween( s1.getPosition().latitude, s1.getPosition().longitude,  point.latitude, point.longitude, distance);
 
                         //check if is close enough
                         if (distance[0] < DEFAULT_INTERSECTION_TOLERANCE) {
@@ -401,7 +441,7 @@ public class RouteFinder {
 
                     float distance[] = new float[2];
                     //get distance to source
-                    Location.distanceBetween( p1.latitude, p1.longitude,  point.latitude, point.longitude, distance);
+                    Location.distanceBetween( s1.getPosition().latitude, s1.getPosition().longitude,  point.latitude, point.longitude, distance);
 
                     //check if is close enough
                     if (distance[0] < DEFAULT_INTERSECTION_TOLERANCE) {
@@ -420,8 +460,11 @@ public class RouteFinder {
         }
 
         Trajectory trajectory =  new Trajectory();
+        trajectory.setName(route.getName());
         trajectory.setPoints(trajectoryPoints);
         trajectory.setDistance(totalDistance);
+        trajectory.setSource(s1);
+        trajectory.setDestination(s2);
 
         return trajectory;
     }
@@ -439,9 +482,9 @@ public class RouteFinder {
                 //get common route
                 Route route = entry.getValue();
 
-                Trajectory trajectory = getTrajectory(entry.getValue().getPolyline(),
-                        sourcePoint.getClosestStops().get(route.getId()).getPosition(),
-                        destinationPoint.getClosestStops().get(route.getId()).getPosition());
+                Trajectory trajectory = getTrajectory(entry.getValue(),
+                        sourcePoint.getClosestStops().get(route.getId()),
+                        destinationPoint.getClosestStops().get(route.getId()));
 
                 if(trajectory!=null){
 
@@ -496,13 +539,13 @@ public class RouteFinder {
                         Route sourceRoute = sourcePoint.getAvailableRoutes().get(pointIntersection.getR1ID());
                         Route destinationRoute = destinationPoint.getAvailableRoutes().get(pointIntersection.getR2ID());
 
-                        Trajectory trajectory1 = getTrajectory(sourceRoute.getPolyline(),
-                                sourcePoint.getClosestStops().get(sourceRoute.getId()).getPosition(),
-                                pointIntersection.getR1Stop().getPosition());
+                        Trajectory trajectory1 = getTrajectory(sourceRoute,
+                                sourcePoint.getClosestStops().get(sourceRoute.getId()),
+                                pointIntersection.getR1Stop());
 
-                        Trajectory trajectory2 = getTrajectory(destinationRoute.getPolyline(),
-                                pointIntersection.getR2Stop().getPosition(),
-                                destinationPoint.getClosestStops().get(destinationRoute.getId()).getPosition());
+                        Trajectory trajectory2 = getTrajectory(destinationRoute,
+                                pointIntersection.getR2Stop(),
+                                destinationPoint.getClosestStops().get(destinationRoute.getId()));
 
 
                         if(trajectory1!=null && trajectory2!=null) {
@@ -570,19 +613,19 @@ public class RouteFinder {
                                 Route destinationRoute = destinationPoint.getAvailableRoutes().get(pointIntersection2.getR2ID());
 
                                 //get trajectory from source to first intersection
-                                Trajectory trajectory1 = getTrajectory(sourceRoute.getPolyline(),
-                                        sourcePoint.getClosestStops().get(sourceRoute.getId()).getPosition(),
-                                        pointIntersection1.getR1Stop().getPosition());
+                                Trajectory trajectory1 = getTrajectory(sourceRoute,
+                                        sourcePoint.getClosestStops().get(sourceRoute.getId()),
+                                        pointIntersection1.getR1Stop());
 
                                 //get trajectory from intersection one to intersection 2
-                                Trajectory trajectory2 = getTrajectory(currentIntersectedRoute.getPolyline(),
-                                        pointIntersection1.getR2Stop().getPosition(),
-                                        pointIntersection2.getR1Stop().getPosition());
+                                Trajectory trajectory2 = getTrajectory(currentIntersectedRoute,
+                                        pointIntersection1.getR2Stop(),
+                                        pointIntersection2.getR1Stop());
 
                                 //get trajectory from intersection 2 to destination
-                                Trajectory trajectory3 = getTrajectory(destinationRoute.getPolyline(),
-                                        pointIntersection2.getR2Stop().getPosition(),
-                                        destinationPoint.getClosestStops().get(destinationRoute.getId()).getPosition());
+                                Trajectory trajectory3 = getTrajectory(destinationRoute,
+                                        pointIntersection2.getR2Stop(),
+                                        destinationPoint.getClosestStops().get(destinationRoute.getId()));
 
 
                                 if(trajectory1!=null && trajectory2!=null && trajectory3!=null) {

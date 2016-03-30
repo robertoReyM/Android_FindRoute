@@ -23,20 +23,11 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
-import com.google.maps.android.PolyUtil;
-import com.robertoreym.findroute.models.PointIntersection;
 import com.robertoreym.findroute.models.Result;
 import com.robertoreym.findroute.models.Route;
-import com.robertoreym.findroute.models.RouteIntersection;
-import com.robertoreym.findroute.models.SearchPoint;
-import com.robertoreym.findroute.models.Stop;
 import com.robertoreym.findroute.models.Trajectory;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -85,7 +76,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         //mDestination = new LatLng(20.690124,-103.416188);
         //mDestination = new LatLng(20.672739,-103.422797);
         //mDestination = new LatLng(20.690365,-103.403958);
-        //mDestination = new LatLng(20.700919,-103.375442);
+        mDestination = new LatLng(20.700919,-103.375442);
 
         mRoutes = new ArrayList<>();
 
@@ -93,6 +84,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
 
             Route route = new Route();
             route.setPolyline(POLYLINES[i]);
+            route.setName(String.format("Route %d",i));
             mRoutes.add(route);
         }
 
@@ -116,6 +108,8 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
                     mMap.addMarker(new MarkerOptions().position(mDestination));
                     //paint winner result
                     paintResult(mResults.get(mCounter));
+
+                    mRouteFinder.generateInstructions(mResults.get(mCounter));
 
                     Snackbar.make(mFabSearch,String.format("Distancia de la ruta: %f",mResults.get(mCounter).getDistance()),Snackbar.LENGTH_SHORT).show();
                     mCounter++;

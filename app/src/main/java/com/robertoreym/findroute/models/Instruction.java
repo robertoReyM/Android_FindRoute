@@ -6,7 +6,8 @@ package com.robertoreym.findroute.models;
 public class Instruction {
 
     private int type;
-    private Stop destination;
+    private String action;
+    private String details;
 
     public int getType() {
         return type;
@@ -16,11 +17,19 @@ public class Instruction {
         this.type = type;
     }
 
-    public Stop getDestination() {
-        return destination;
+    public String getAction() {
+        return action;
     }
 
-    public void setDestination(Stop destination) {
-        this.destination = destination;
+    public void setAction(String action) {
+        this.action = action;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public void setDetails(String details) {
+        this.details = details;
     }
 }

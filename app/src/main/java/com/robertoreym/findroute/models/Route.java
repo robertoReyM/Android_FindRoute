@@ -11,6 +11,7 @@ import java.util.List;
  */
 public class Route {
     private String id;
+    private String name;
     private String polyline;
     private ArrayList<Stop> stops;
     private List<LatLng> points;
@@ -27,6 +28,14 @@ public class Route {
 
     public String getId() {
         return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public void setId(String id) {
