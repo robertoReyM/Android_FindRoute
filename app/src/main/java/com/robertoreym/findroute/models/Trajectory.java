@@ -11,6 +11,33 @@ public class Trajectory {
 
     private float distance;
     private List<LatLng> points;
+    private Stop source;
+    private Stop destination;
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Stop getSource() {
+        return source;
+    }
+
+    public void setSource(Stop source) {
+        this.source = source;
+    }
+
+    public Stop getDestination() {
+        return destination;
+    }
+
+    public void setDestination(Stop destination) {
+        this.destination = destination;
+    }
 
     public float getDistance() {
         return distance;

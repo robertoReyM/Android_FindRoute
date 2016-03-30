@@ -9,6 +9,15 @@ public class Result {
 
     private String routes;
     private ArrayList<Trajectory> trajectories;
+    private ArrayList<Instruction> instructions;
+
+    public ArrayList<Instruction> getInstructions() {
+        return instructions;
+    }
+
+    public void setInstructions(ArrayList<Instruction> instructions) {
+        this.instructions = instructions;
+    }
 
     public String getRoutes() {
         return routes;
